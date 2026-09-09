@@ -21,11 +21,11 @@ npx playwright install chromium
 Sweep every page at two viewports (1440 and 390) with the full tag set: `wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22a, wcag22aa, best-practice`.
 
 > **Wait for animations before you measure contrast**
-> Entrance animations that start at `opacity:0` make axe read blended mid-fade colors and report contrast failures that do not exist at rest. Wait ~2.5s after `networkidle` before analyzing. On the Agora demo this produced a phantom 1.96:1 "serious" hit on a button that is actually 5.37:1.
+> Entrance animations that start at `opacity:0` make axe read blended mid-fade colors and report contrast failures that do not exist at rest. Wait ~2.5s after `networkidle` before analyzing. On the DPC demo this produced a phantom 1.96:1 "serious" hit on a button that is actually 5.37:1.
 
 ## The manual layer
 
-Six checks that automation misses. Each one was a real defect on Agora.
+Six checks that automation misses. Each one was a real defect on that audit.
 
 1. **Skip link (2.4.1, Level A).** First tab stop on every page, visible when focused. Verify by pressing Tab on a fresh page and reading `document.activeElement`.
 2. **Focus rings on dark surfaces (2.4.7, 1.4.11).** The browser default is a thin blue ring that disappears on a dark footer or hero. Set one global `:focus-visible` ring, then flip its color on dark panels in a block at the *bottom* of the stylesheet so it beats the component rules. Never `outline:none` with only a border-color swap: a faint box-shadow does not clear 3:1.
@@ -38,7 +38,7 @@ Also worth a look each pass: alt text that describes provenance instead of conte
 
 ## Writing the probes
 
-Automated probes lie in specific ways. Three that cost time on the Agora run:
+Automated probes lie in specific ways. Three that cost time on that run:
 
 - `elementFromPoint` returns `null` for coordinates outside the viewport, and `scrollIntoView` is async when `scroll-behavior:smooth` is set. Use Playwright's own hit-testing to check target size instead.
 - Calling `.focus()` on one element and then pressing Tab measures the *second* tab stop, not the first. Use a fresh page.
@@ -48,13 +48,13 @@ Automated probes lie in specific ways. Three that cost time on the Agora run:
 
 Added after the a therapy-practice site audit 2026-08-07. A wide table inside `overflow-x:auto` passes every screen check and every axe run, then **silently clips at the right margin in the exported PDF**, because print has no horizontal scroll. The a11y sweep will never catch it: on screen the wrapper scrolls, so nothing overflows.
 
-Probe it directly with `emulateMedia({media:'print'})` at Letter content width (816px @ 96dpi) and fail on any element whose `right` exceeds it. Reusable script: `Projects/prospective/livewell-gainesville/audit/scripts/printcheck.mjs`.
+Probe it directly with `emulateMedia({media:'print'})` at Letter content width (816px @ 96dpi) and fail on any element whose `right` exceeds it.
 
 The fix belongs in a `@media print` block: release `min-width` on tables, let `white-space:nowrap` status badges wrap, and shrink cell padding. Better still, do not put long strings inside nowrap badges at all. Short badge plus normal text below reads better and cannot overflow at any width.
 
 ### Page breaks: measure them, do not eyeball them
 
-Same audit, 2026-08-08. Rendering every page and measuring trailing whitespace found three near-blank pages a skim would have missed. Reusable: `Projects/prospective/livewell-gainesville/audit/scripts/measure.sh` (pdftoppm at 60dpi, then per page report where ink stops plus the left/right ink edges). Anything over ~30% trailing whitespace that is not the cover or the last page is a stranded heading.
+Same audit, 2026-08-08. Rendering every page and measuring trailing whitespace found three near-blank pages a skim would have missed. Method: pdftoppm at 60dpi, then a per-page report of where ink stops plus the left/right ink edges. Anything over ~30% trailing whitespace that is not the cover or the last page is a stranded heading.
 
 > **`break-inside: avoid` on a block taller than a page makes things worse, not better**
 > The rule cannot be honoured, so the renderer shunts the whole block to a fresh page and leaves the previous one 85% white. It cascades: one bad `avoid` on a tall element produced two blank pages in a row. **Only guard small units** (`tr`, `.card`, callouts). Never `section`, never a full-width `.panel`, never a two-column card box. Tall things should be allowed to split.
